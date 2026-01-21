@@ -44,6 +44,20 @@
       font-size: 0.85em;
       color: #555;
     }
+/* Halo marker styles */
+.halo-marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #1f2937;            /* neutral dot */
+  border: 2px solid #ffffff;      /* crisp edge */
+  box-shadow: 0 0 0 10px rgba(0,0,0,0); /* default no halo */
+}
+
+.halo-good { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0.25), 0 6px 18px rgba(0,0,0,0.12); }
+.halo-avg  { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0.25), 0 6px 18px rgba(0,0,0,0.12); }
+.halo-poor { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.25), 0 6px 18px rgba(0,0,0,0.12); }
+    
   </style>
 </head>
 
@@ -91,7 +105,14 @@ async function getWeather(lat, lon) {
 
 async function addGroundMarkers() {
   for (const g of grounds) {
-    const marker = L.marker([g.lat, g.lon]).addTo(map);
+    const icon = L.divIcon({
+  className: "",
+  html: `<div class="halo-marker"></div>`,
+  iconSize: [14, 14],
+  iconAnchor: [7, 7]
+});
+
+const marker = L.marker([g.lat, g.lon], { icon }).addTo(map);
 
     // Show something immediately
     marker.bindPopup(`<b>${g.name}</b><br>${g.county}<br>Loading weather...`);
@@ -99,6 +120,14 @@ async function addGroundMarkers() {
     try {
       const data = await getWeather(g.lat, g.lon);
       const cw = data.current_weather;
+      const rating = classifyConditions(cw);
+const el = marker.getElement()?.querySelector(".halo-marker");
+if (el) {
+  el.classList.add(
+    rating === "good" ? "halo-good" :
+    rating === "poor" ? "halo-poor" : "halo-avg"
+  );
+}
 
       const popupHtml = `
         <b>${g.name}</b><br>
@@ -114,7 +143,23 @@ async function addGroundMarkers() {
     }
   }
 }
+function classifyConditions(cw) {
+  // cw.temperature (°C), cw.windspeed (km/h)
+  // Open-Meteo current_weather doesn't include "is raining" directly,
+  // so we classify using temperature + wind (simple but effective).
 
+  const temp = cw.temperature;
+  const wind = cw.windspeed;
+
+  // Adjust these thresholds to taste
+  const good = (temp >= 14 && wind <= 25);
+  const poor = (wind >= 40 || temp <= 6);
+
+  if (poor) return "poor";
+  if (good) return "good";
+  return "avg";
+}
+  
 addGroundMarkers();
 </script>
 
