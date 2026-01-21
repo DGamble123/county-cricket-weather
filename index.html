@@ -1,75 +1,69 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>County Cricket Ground Weather</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <style>
-    
-#map {
-  height: 75vh;
-  max-width: 1000px;
-  margin: 0 auto;
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
-}
-    
     body {
       font-family: Arial, sans-serif;
       background: #f5f7fa;
       margin: 0;
       padding: 20px;
     }
+
     h1 {
       text-align: center;
     }
-    .ground {
-      background: white;
-      padding: 15px;
-      margin: 12px auto;
-      max-width: 600px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    .temp {
-      font-size: 1.4em;
-      font-weight: bold;
-    }
-    .updated {
-      font-size: 0.85em;
-      color: #555;
-    }
-/* Halo marker styles */
-.halo-marker {
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  background: #1f2937;            /* neutral dot */
-  border: 2px solid #ffffff;      /* crisp edge */
-  box-shadow: 0 0 0 10px rgba(0,0,0,0); /* default no halo */
-}
 
-.halo-good { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0.25), 0 6px 18px rgba(0,0,0,0.12); }
-.halo-avg  { box-shadow: 0 0 0 10px rgba(234, 179, 8, 0.25), 0 6px 18px rgba(0,0,0,0.12); }
-.halo-poor { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.25), 0 6px 18px rgba(0,0,0,0.12); }
-    
+    #map {
+      height: 75vh;
+      max-width: 1000px;
+      margin: 0 auto;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    }
+
+    /* Halo marker styles */
+    .halo-marker {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background: #1f2937;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 0 10px rgba(0,0,0,0);
+    }
+
+    .halo-good {
+      box-shadow: 0 0 0 10px rgba(34, 197, 94, 0.25),
+                  0 6px 18px rgba(0,0,0,0.12);
+    }
+
+    .halo-avg {
+      box-shadow: 0 0 0 10px rgba(234, 179, 8, 0.25),
+                  0 6px 18px rgba(0,0,0,0.12);
+    }
+
+    .halo-poor {
+      box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.25),
+                  0 6px 18px rgba(0,0,0,0.12);
+    }
   </style>
 </head>
 
 <body>
 
 <h1>County Cricket Ground Weather</h1>
-
 <div id="map"></div>
 
 <script>
+/* ------------------- DATA ------------------- */
 const grounds = [
- { name: "Lord’s", county: "Middlesex", lat: 51.5294, lon: -0.1727 },
+  { name: "Lord’s", county: "Middlesex", lat: 51.5294, lon: -0.1727 },
   { name: "The Oval", county: "Surrey", lat: 51.4826, lon: -0.0077 },
   { name: "Edgbaston", county: "Warwickshire", lat: 52.4559, lon: -1.9040 },
   { name: "Trent Bridge", county: "Nottinghamshire", lat: 52.9368, lon: -1.1332 },
@@ -80,7 +74,7 @@ const grounds = [
   { name: "Taunton", county: "Somerset", lat: 51.0135, lon: -3.1067 },
   { name: "Chelmsford", county: "Essex", lat: 51.7355, lon: 0.4685 },
   { name: "Northampton", county: "Northamptonshire", lat: 52.2362, lon: -0.9038 },
-  { name: "Derbyshire", county: "Derbyshire", lat: 52.9187, lon: -1.4700 },
+  { name: "Derby", county: "Derbyshire", lat: 52.9187, lon: -1.4700 },
   { name: "Hove", county: "Sussex", lat: 50.8360, lon: -0.1800 },
   { name: "Grace Road", county: "Leicestershire", lat: 52.6493, lon: -1.0976 },
   { name: "New Road", county: "Worcestershire", lat: 52.1920, lon: -2.2180 },
@@ -89,86 +83,98 @@ const grounds = [
   { name: "Canterbury", county: "Kent", lat: 51.2798, lon: 1.0871 }
 ];
 
-const map = L.map('map').setView([54.5, -3.0], 6); // UK-ish centre + zoom
+/* ------------------- MAP ------------------- */
+const map = L.map("map").setView([54.5, -3.0], 6);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 18,
-  attribution: '&copy; OpenStreetMap contributors'
+  attribution: "&copy; OpenStreetMap contributors"
 }).addTo(map);
 
+/* ------------------- WEATHER ------------------- */
 async function getWeather(lat, lon) {
-const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=precipitation&timezone=Europe/London`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Weather request failed');
-  return await res.json();
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+    `&current_weather=true&hourly=precipitation&timezone=Europe/London`;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await fetch(url);
+
+    if (res.status === 429 || res.status === 503) {
+      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+      continue;
+    }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
+    }
+
+    return await res.json();
+  }
+
+  throw new Error("Weather API retry failed");
 }
 
+function classifyConditions(cw, hourly) {
+  const temp = cw.temperature;
+  const wind = cw.windspeed;
+  const rain = hourly?.precipitation?.[0] ?? 0;
+
+  if (rain > 0) return "poor";
+  if (temp < 12 || wind > 30) return "avg";
+  return "good";
+}
+
+/* ------------------- MARKERS ------------------- */
 async function addGroundMarkers() {
   for (const g of grounds) {
     const icon = L.divIcon({
-  className: "",
-  html: `<div class="halo-marker"></div>`,
-  iconSize: [14, 14],
-  iconAnchor: [7, 7]
-});
+      className: "",
+      html: `<div class="halo-marker"></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7]
+    });
 
-const marker = L.marker([g.lat, g.lon], { icon }).addTo(map);
+    const marker = L.marker([g.lat, g.lon], { icon }).addTo(map);
+    marker.bindPopup(`<b>${g.name}</b><br>${g.county}<br>Loading weather…`);
 
-    // Show something immediately
-    marker.bindPopup(`<b>${g.name}</b><br>${g.county}<br>Loading weather...`);
+    try {
+      const data = await getWeather(g.lat, g.lon);
+      const cw = data.current_weather;
+      const rating = classifyConditions(cw, data.hourly);
+      const rain = Math.round((data.hourly?.precipitation?.[0] ?? 0) * 10) / 10;
 
-try {
-  const data = await getWeather(g.lat, g.lon);
-  const cw = data.current_weather;
+      setTimeout(() => {
+        const el = marker.getElement()?.querySelector(".halo-marker");
+        if (!el) return;
+        el.classList.add(
+          rating === "good" ? "halo-good" :
+          rating === "poor" ? "halo-poor" : "halo-avg"
+        );
+      }, 0);
 
-  const rating = classifyConditions(cw, data.hourly);
+      marker.setPopupContent(`
+        <b>${g.name}</b><br>
+        ${g.county}<br><br>
+        <b>${cw.temperature}°C</b><br>
+        Wind: ${cw.windspeed} km/h<br>
+        Rain (next hour): ${rain} mm<br>
+        Updated: ${cw.time}
+      `);
 
-  setTimeout(() => {
-    const markerEl = marker.getElement();
-    if (!markerEl) return;
+    } catch (e) {
+      console.error("Weather error:", g.name, e);
+      marker.setPopupContent(
+        `<b>${g.name}</b><br>${g.county}<br><br>
+         Weather unavailable<br><small>${e.message}</small>`
+      );
+    }
 
-    const el = markerEl.querySelector(".halo-marker");
-    if (!el) return;
-
-    el.classList.add(
-      rating === "good" ? "halo-good" :
-      rating === "poor" ? "halo-poor" : "halo-avg"
-    );
-  }, 0);
-
-  const rain = data.hourly?.precipitation?.[0] ?? 0;
-
-  const popupHtml = `
-    <b>${g.name}</b><br>
-    ${g.county}<br><br>
-    <b>${cw.temperature}°C</b><br>
-    Wind: ${cw.windspeed} km/h<br>
-    Rain (next hour): ${rain} mm<br>
-    Updated: ${cw.time}
-  `;
-
-  marker.setPopupContent(popupHtml);
-} catch (e) {
-  marker.setPopupContent(`<b>${g.name}</b><br>${g.county}<br><br>Weather unavailable`);
-}
+    await new Promise(r => setTimeout(r, 120));
   }
 }
-function classifyConditions(cw, hourly) {
-  const temp = cw.temperature;     // °C
-  const wind = cw.windspeed;       // km/h
-  const rainNextHour = hourly?.precipitation?.[0] ?? 0; // mm
 
-  // Cricket-first logic:
-  // Any rain = poor
-  if (rainNextHour > 0) return "poor";
-
-  // Cold or very windy but dry = average
-  if (temp < 12 || wind > 30) return "avg";
-
-  // Dry, mild, light wind = good
-  return "good";
-}
-  
 addGroundMarkers();
 </script>
 
