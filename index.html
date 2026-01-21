@@ -91,14 +91,12 @@ const ukBounds = [
 
 const map = L.map("map", {
   minZoom: 5,
-  maxZoom: 12
+  maxZoom: 12,
+  maxBounds: ukBounds,
+  maxBoundsViscosity: 0.8
 });
 
 map.fitBounds(ukBounds);
-map.setMaxBounds(ukBounds);
-map.on("drag", function () {
-  map.panInsideBounds(ukBounds, { animate: false });
-});
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 18,
