@@ -5,8 +5,20 @@
   <meta charset="UTF-8">
   <title>County Cricket Ground Weather</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
+  
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
   <style>
+    
+#map {
+  height: 75vh;
+  max-width: 1000px;
+  margin: 0 auto;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+    
     body {
       font-family: Arial, sans-serif;
       background: #f5f7fa;
@@ -39,7 +51,7 @@
 
 <h1>County Cricket Ground Weather</h1>
 
-<div id="grounds"></div>
+<div id="map"></div>
 
 <script>
 const grounds = [
@@ -63,28 +75,47 @@ const grounds = [
   { name: "Canterbury", county: "Kent", lat: 51.2798, lon: 1.0871 }
 ];
 
-async function loadWeather() {
-  const container = document.getElementById("grounds");
+const map = L.map('map').setView([54.5, -3.0], 6); // UK-ish centre + zoom
 
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+async function getWeather(lat, lon) {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=Europe/London`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Weather request failed');
+  return await res.json();
+}
+
+async function addGroundMarkers() {
   for (const g of grounds) {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${g.lat}&longitude=${g.lon}&current_weather=true&timezone=Europe/London`;
-    const res = await fetch(url);
-    const data = await res.json();
+    const marker = L.marker([g.lat, g.lon]).addTo(map);
 
-    const div = document.createElement("div");
-    div.className = "ground";
-    div.innerHTML = `
-      <h2>${g.name}</h2>
-      <div>${g.county}</div>
-      <div class="temp">${data.current_weather.temperature}°C</div>
-      <div>Wind: ${data.current_weather.windspeed} km/h</div>
-      <div class="updated">Updated: ${data.current_weather.time}</div>
-    `;
-    container.appendChild(div);
+    // Show something immediately
+    marker.bindPopup(`<b>${g.name}</b><br>${g.county}<br>Loading weather...`);
+
+    try {
+      const data = await getWeather(g.lat, g.lon);
+      const cw = data.current_weather;
+
+      const popupHtml = `
+        <b>${g.name}</b><br>
+        ${g.county}<br><br>
+        <b>${cw.temperature}°C</b><br>
+        Wind: ${cw.windspeed} km/h<br>
+        Updated: ${cw.time}
+      `;
+
+      marker.setPopupContent(popupHtml);
+    } catch (e) {
+      marker.setPopupContent(`<b>${g.name}</b><br>${g.county}<br><br>Weather unavailable`);
+    }
   }
 }
 
-loadWeather();
+addGroundMarkers();
 </script>
 
 </body>
