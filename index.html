@@ -28,6 +28,11 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.12);
     }
 
+    /* Optional polish: slightly soften the map tiles */
+    .leaflet-tile {
+      filter: grayscale(20%) brightness(98%);
+    }
+
     /* Halo marker styles */
     .halo-marker {
       width: 14px;
@@ -83,20 +88,24 @@ const grounds = [
   { name: "Canterbury", county: "Kent", lat: 51.2798, lon: 1.0871 }
 ];
 
-/* ------------------- MAP (UK LIMITED) ------------------- */
-const ukBounds = [
-  [49.8, -8.7],  // SW (Cornwall-ish)
-  [60.9,  1.9]   // NE (Shetland-ish)
+/* ------------------- MAP (STATIC: ENGLAND & WALES) ------------------- */
+// England & Wales bounding box
+const ewBounds = [
+  [49.9, -6.4],  // SW (Cornwall / Isles of Scilly)
+  [55.9,  2.1]   // NE (Northumberland coast)
 ];
 
 const map = L.map("map", {
-  minZoom: 5,
-  maxZoom: 12,
-  maxBounds: ukBounds,
-  maxBoundsViscosity: 0.8
+  zoomControl: false,
+  dragging: false,
+  scrollWheelZoom: false,
+  doubleClickZoom: false,
+  boxZoom: false,
+  keyboard: false,
+  touchZoom: false
 });
 
-map.fitBounds(ukBounds);
+map.fitBounds(ewBounds);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 18,
@@ -129,8 +138,8 @@ async function getWeather(lat, lon) {
 }
 
 function classifyConditions(cw, hourly) {
-  const temp = cw.temperature;          // °C
-  const wind = cw.windspeed;            // km/h
+  const temp = cw.temperature;               // °C
+  const wind = cw.windspeed;                 // km/h
   const rain = hourly?.precipitation?.[0] ?? 0; // mm next hour
 
   // Cricket-first:
@@ -150,6 +159,8 @@ async function addGroundMarkers() {
     });
 
     const marker = L.marker([g.lat, g.lon], { icon }).addTo(map);
+
+    // Popups still work even though the map is static
     marker.bindPopup(`<b>${g.name}</b><br>${g.county}<br>Loading weather…`);
 
     try {
@@ -163,6 +174,7 @@ async function addGroundMarkers() {
       setTimeout(() => {
         const el = marker.getElement()?.querySelector(".halo-marker");
         if (!el) return;
+
         el.classList.add(
           rating === "good" ? "halo-good" :
           rating === "poor" ? "halo-poor" : "halo-avg"
@@ -196,4 +208,3 @@ addGroundMarkers();
 
 </body>
 </html>
-
