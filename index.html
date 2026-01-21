@@ -97,7 +97,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 async function getWeather(lat, lon) {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=Europe/London`;
+const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=precipitation&timezone=Europe/London`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Weather request failed');
   return await res.json();
@@ -120,7 +120,7 @@ const marker = L.marker([g.lat, g.lon], { icon }).addTo(map);
     try {
       const data = await getWeather(g.lat, g.lon);
       const cw = data.current_weather;
-      const rating = classifyConditions(cw);
+      const rating = classifyConditions(cw, data.hourly);
 const el = marker.getElement()?.querySelector(".halo-marker");
 if (el) {
   el.classList.add(
@@ -134,6 +134,7 @@ if (el) {
         ${g.county}<br><br>
         <b>${cw.temperature}°C</b><br>
         Wind: ${cw.windspeed} km/h<br>
+        Rain (next hour): ${rain} mm<br>
         Updated: ${cw.time}
       `;
 
@@ -143,21 +144,20 @@ if (el) {
     }
   }
 }
-function classifyConditions(cw) {
-  // cw.temperature (°C), cw.windspeed (km/h)
-  // Open-Meteo current_weather doesn't include "is raining" directly,
-  // so we classify using temperature + wind (simple but effective).
+function classifyConditions(cw, hourly) {
+  const temp = cw.temperature;     // °C
+  const wind = cw.windspeed;       // km/h
+  const rainNextHour = hourly?.precipitation?.[0] ?? 0; // mm
 
-  const temp = cw.temperature;
-  const wind = cw.windspeed;
+  // Cricket-first logic:
+  // Any rain = poor
+  if (rainNextHour > 0) return "poor";
 
-  // Adjust these thresholds to taste
-  const good = (temp >= 14 && wind <= 25);
-  const poor = (wind >= 40 || temp <= 6);
+  // Cold or very windy but dry = average
+  if (temp < 12 || wind > 30) return "avg";
 
-  if (poor) return "poor";
-  if (good) return "good";
-  return "avg";
+  // Dry, mild, light wind = good
+  return "good";
 }
   
 addGroundMarkers();
