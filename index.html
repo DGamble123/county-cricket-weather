@@ -10,27 +10,42 @@
 
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f5f7fa;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f3f4f6;
       margin: 0;
-      padding: 20px;
+      padding: 28px 20px;
+      color: #111827;
     }
 
     h1 {
       text-align: center;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #6b7280;
+      margin-bottom: 22px;
+      font-size: 0.95rem;
+    }
+
+    #map-wrapper {
+      position: relative;
+      max-width: 1000px;
+      margin: 0 auto;
     }
 
     #map {
-      height: 75vh;
-      max-width: 1000px;
-      margin: 0 auto;
-      border-radius: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+      height: 72vh;
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      overflow: hidden;
     }
 
-    /* Optional polish: slightly soften the map tiles */
+    /* Make the map a quiet background */
     .leaflet-tile {
-      filter: grayscale(20%) brightness(98%);
+      filter: grayscale(60%) brightness(103%);
     }
 
     /* Halo marker styles */
@@ -44,26 +59,75 @@
     }
 
     .halo-good {
-      box-shadow: 0 0 0 10px rgba(34, 197, 94, 0.25),
-                  0 6px 18px rgba(0,0,0,0.12);
+      box-shadow: 0 0 0 11px rgba(34, 197, 94, 0.28),
+                  0 6px 18px rgba(0,0,0,0.15);
     }
 
     .halo-avg {
-      box-shadow: 0 0 0 10px rgba(234, 179, 8, 0.25),
-                  0 6px 18px rgba(0,0,0,0.12);
+      box-shadow: 0 0 0 11px rgba(234, 179, 8, 0.28),
+                  0 6px 18px rgba(0,0,0,0.15);
     }
 
     .halo-poor {
-      box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.25),
-                  0 6px 18px rgba(0,0,0,0.12);
+      box-shadow: 0 0 0 12px rgba(239, 68, 68, 0.32),
+                  0 6px 18px rgba(0,0,0,0.15);
     }
+
+    /* Legend */
+    .legend {
+      position: absolute;
+      bottom: 14px;
+      right: 14px;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(4px);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #1f2937;
+    }
+
+    .legend-good { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.35); }
+    .legend-avg  { box-shadow: 0 0 0 6px rgba(234, 179, 8, 0.35); }
+    .legend-poor { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.4); }
+
   </style>
 </head>
 
 <body>
 
-<h1>County Cricket Ground Weather</h1>
-<div id="map"></div>
+<h1>County Cricket Weather</h1>
+<div class="subtitle">Live conditions across England & Wales</div>
+
+<div id="map-wrapper">
+  <div id="map"></div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <span class="legend-dot legend-good"></span> Good (dry, playable)
+    </div>
+    <div class="legend-item">
+      <span class="legend-dot legend-avg"></span> At risk
+    </div>
+    <div class="legend-item">
+      <span class="legend-dot legend-poor"></span> Poor (rain expected)
+    </div>
+  </div>
+</div>
 
 <script>
 /* ------------------- DATA ------------------- */
@@ -88,10 +152,10 @@ const grounds = [
   { name: "Canterbury", county: "Kent", lat: 51.2798, lon: 1.0871 }
 ];
 
-/* ------------------- MAP (STATIC: ENGLAND & WALES, TIGHTER) ------------------- */
+/* ------------------- MAP (STATIC, CLEAN) ------------------- */
 const ewBounds = [
-  [50.1, -5.8],  // SW (Cornwall)
-  [55.4,  1.6]   // NE (North East England)
+  [50.1, -5.8],
+  [55.4,  1.6]
 ];
 
 const map = L.map("map", {
@@ -106,10 +170,10 @@ const map = L.map("map", {
 
 map.fitBounds(ewBounds, { padding: [10, 10] });
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 18,
-  attribution: "&copy; OpenStreetMap contributors"
-}).addTo(map);
+L.tileLayer(
+  "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+  { attribution: "&copy; OpenStreetMap & CARTO" }
+).addTo(map);
 
 /* ------------------- WEATHER ------------------- */
 async function getWeather(lat, lon) {
@@ -117,33 +181,15 @@ async function getWeather(lat, lon) {
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
     `&current_weather=true&hourly=precipitation&timezone=Europe/London`;
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const res = await fetch(url);
-
-    if (res.status === 429 || res.status === 503) {
-      await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
-      continue;
-    }
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
-    }
-
-    return await res.json();
-  }
-
-  throw new Error("Weather API retry failed");
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Weather fetch failed");
+  return await res.json();
 }
 
 function classifyConditions(cw, hourly) {
-  const temp = cw.temperature;               // °C
-  const wind = cw.windspeed;                 // km/h
-  const rain = hourly?.precipitation?.[0] ?? 0; // mm next hour
-
-  // Cricket-first:
+  const rain = hourly?.precipitation?.[0] ?? 0;
   if (rain > 0) return "poor";
-  if (temp < 12 || wind > 30) return "avg";
+  if (cw.temperature < 12 || cw.windspeed > 30) return "avg";
   return "good";
 }
 
@@ -151,27 +197,22 @@ function classifyConditions(cw, hourly) {
 async function addGroundMarkers() {
   for (const g of grounds) {
     const icon = L.divIcon({
-      className: "",
       html: `<div class="halo-marker"></div>`,
       iconSize: [14, 14],
       iconAnchor: [7, 7]
     });
 
     const marker = L.marker([g.lat, g.lon], { icon }).addTo(map);
-    marker.bindPopup(`<b>${g.name}</b><br>${g.county}<br>Loading weather…`);
+    marker.bindPopup(`<b>${g.name}</b><br>${g.county}<br>Loading…`);
 
     try {
       const data = await getWeather(g.lat, g.lon);
-      const cw = data.current_weather;
-
-      const rating = classifyConditions(cw, data.hourly);
+      const rating = classifyConditions(data.current_weather, data.hourly);
       const rain = Math.round((data.hourly?.precipitation?.[0] ?? 0) * 10) / 10;
 
-      // Ensure marker DOM exists before adding halo class
       setTimeout(() => {
         const el = marker.getElement()?.querySelector(".halo-marker");
         if (!el) return;
-
         el.classList.add(
           rating === "good" ? "halo-good" :
           rating === "poor" ? "halo-poor" : "halo-avg"
@@ -181,22 +222,14 @@ async function addGroundMarkers() {
       marker.setPopupContent(`
         <b>${g.name}</b><br>
         ${g.county}<br><br>
-        <b>${cw.temperature}°C</b><br>
-        Wind: ${cw.windspeed} km/h<br>
-        Rain (next hour): ${rain} mm<br>
-        Updated: ${cw.time}
+        <b>${data.current_weather.temperature}°C</b><br>
+        Wind: ${data.current_weather.windspeed} km/h<br>
+        Rain (next hour): ${rain} mm
       `);
 
-    } catch (e) {
-      console.error("Weather error:", g.name, e);
-      marker.setPopupContent(
-        `<b>${g.name}</b><br>${g.county}<br><br>
-         Weather unavailable<br><small>${e.message}</small>`
-      );
+    } catch {
+      marker.setPopupContent(`<b>${g.name}</b><br>${g.county}<br>Weather unavailable`);
     }
-
-    // Small delay to reduce chance of rate limiting
-    await new Promise(r => setTimeout(r, 120));
   }
 }
 
