@@ -1,0 +1,80 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>County Cricket Ground Weather</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .ground {
+      background: white;
+      padding: 15px;
+      margin: 12px auto;
+      max-width: 600px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .temp {
+      font-size: 1.4em;
+      font-weight: bold;
+    }
+    .updated {
+      font-size: 0.85em;
+      color: #555;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>County Cricket Ground Weather</h1>
+
+<div id="grounds"></div>
+
+<script>
+const grounds = [
+  { name: "Lord’s", county: "Middlesex", lat: 51.5294, lon: -0.1727 },
+  { name: "The Oval", county: "Surrey", lat: 51.4826, lon: -0.0077 },
+  { name: "Edgbaston", county: "Warwickshire", lat: 52.4559, lon: -1.9040 },
+  { name: "Trent Bridge", county: "Nottinghamshire", lat: 52.9368, lon: -1.1332 },
+  { name: "Headingley", county: "Yorkshire", lat: 53.8173, lon: -1.5825 },
+  { name: "Old Trafford", county: "Lancashire", lat: 53.4564, lon: -2.2876 },
+  { name: "Sophia Gardens", county: "Glamorgan", lat: 51.4813, lon: -3.1800 }
+];
+
+async function loadWeather() {
+  const container = document.getElementById("grounds");
+
+  for (const g of grounds) {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${g.lat}&longitude=${g.lon}&current_weather=true&timezone=Europe/London`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    const div = document.createElement("div");
+    div.className = "ground";
+    div.innerHTML = `
+      <h2>${g.name}</h2>
+      <div>${g.county}</div>
+      <div class="temp">${data.current_weather.temperature}°C</div>
+      <div>Wind: ${data.current_weather.windspeed} km/h</div>
+      <div class="updated">Updated: ${data.current_weather.time}</div>
+    `;
+    container.appendChild(div);
+  }
+}
+
+loadWeather();
+</script>
+
+</body>
+</html>
