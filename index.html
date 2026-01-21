@@ -117,36 +117,40 @@ const marker = L.marker([g.lat, g.lon], { icon }).addTo(map);
     // Show something immediately
     marker.bindPopup(`<b>${g.name}</b><br>${g.county}<br>Loading weather...`);
 
-    try {
-      const data = await getWeather(g.lat, g.lon);
-      const cw = data.current_weather;
-      const rating = classifyConditions(cw, data.hourly);
-setTimeout(() => {
-  const markerEl = marker.getElement();
-  if (!markerEl) return;
+try {
+  const data = await getWeather(g.lat, g.lon);
+  const cw = data.current_weather;
 
-  const el = markerEl.querySelector(".halo-marker");
-  if (!el) return;
+  const rating = classifyConditions(cw, data.hourly);
 
-  el.classList.add(
-    rating === "good" ? "halo-good" :
-    rating === "poor" ? "halo-poor" : "halo-avg"
-  );
-}, 0);
+  setTimeout(() => {
+    const markerEl = marker.getElement();
+    if (!markerEl) return;
 
-      const popupHtml = `
-        <b>${g.name}</b><br>
-        ${g.county}<br><br>
-        <b>${cw.temperature}°C</b><br>
-        Wind: ${cw.windspeed} km/h<br>
-        Rain (next hour): ${rain} mm<br>
-        Updated: ${cw.time}
-      `;
+    const el = markerEl.querySelector(".halo-marker");
+    if (!el) return;
 
-      marker.setPopupContent(popupHtml);
-    } catch (e) {
-      marker.setPopupContent(`<b>${g.name}</b><br>${g.county}<br><br>Weather unavailable`);
-    }
+    el.classList.add(
+      rating === "good" ? "halo-good" :
+      rating === "poor" ? "halo-poor" : "halo-avg"
+    );
+  }, 0);
+
+  const rain = data.hourly?.precipitation?.[0] ?? 0;
+
+  const popupHtml = `
+    <b>${g.name}</b><br>
+    ${g.county}<br><br>
+    <b>${cw.temperature}°C</b><br>
+    Wind: ${cw.windspeed} km/h<br>
+    Rain (next hour): ${rain} mm<br>
+    Updated: ${cw.time}
+  `;
+
+  marker.setPopupContent(popupHtml);
+} catch (e) {
+  marker.setPopupContent(`<b>${g.name}</b><br>${g.county}<br><br>Weather unavailable`);
+}
   }
 }
 function classifyConditions(cw, hourly) {
