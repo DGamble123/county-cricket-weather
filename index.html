@@ -83,8 +83,22 @@ const grounds = [
   { name: "Canterbury", county: "Kent", lat: 51.2798, lon: 1.0871 }
 ];
 
-/* ------------------- MAP ------------------- */
-const map = L.map("map").setView([54.5, -3.0], 6);
+/* ------------------- MAP (UK LIMITED) ------------------- */
+const ukBounds = [
+  [49.8, -8.7],  // SW (Cornwall-ish)
+  [60.9,  1.9]   // NE (Shetland-ish)
+];
+
+const map = L.map("map", {
+  minZoom: 5,
+  maxZoom: 12
+});
+
+map.fitBounds(ukBounds);
+map.setMaxBounds(ukBounds);
+map.on("drag", function () {
+  map.panInsideBounds(ukBounds, { animate: false });
+});
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 18,
@@ -117,10 +131,11 @@ async function getWeather(lat, lon) {
 }
 
 function classifyConditions(cw, hourly) {
-  const temp = cw.temperature;
-  const wind = cw.windspeed;
-  const rain = hourly?.precipitation?.[0] ?? 0;
+  const temp = cw.temperature;          // °C
+  const wind = cw.windspeed;            // km/h
+  const rain = hourly?.precipitation?.[0] ?? 0; // mm next hour
 
+  // Cricket-first:
   if (rain > 0) return "poor";
   if (temp < 12 || wind > 30) return "avg";
   return "good";
@@ -142,9 +157,11 @@ async function addGroundMarkers() {
     try {
       const data = await getWeather(g.lat, g.lon);
       const cw = data.current_weather;
+
       const rating = classifyConditions(cw, data.hourly);
       const rain = Math.round((data.hourly?.precipitation?.[0] ?? 0) * 10) / 10;
 
+      // Ensure marker DOM exists before adding halo class
       setTimeout(() => {
         const el = marker.getElement()?.querySelector(".halo-marker");
         if (!el) return;
@@ -171,6 +188,7 @@ async function addGroundMarkers() {
       );
     }
 
+    // Small delay to reduce chance of rate limiting
     await new Promise(r => setTimeout(r, 120));
   }
 }
@@ -180,3 +198,4 @@ addGroundMarkers();
 
 </body>
 </html>
+
