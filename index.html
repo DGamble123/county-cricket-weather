@@ -121,13 +121,18 @@ const marker = L.marker([g.lat, g.lon], { icon }).addTo(map);
       const data = await getWeather(g.lat, g.lon);
       const cw = data.current_weather;
       const rating = classifyConditions(cw, data.hourly);
-const el = marker.getElement()?.querySelector(".halo-marker");
-if (el) {
+setTimeout(() => {
+  const markerEl = marker.getElement();
+  if (!markerEl) return;
+
+  const el = markerEl.querySelector(".halo-marker");
+  if (!el) return;
+
   el.classList.add(
     rating === "good" ? "halo-good" :
     rating === "poor" ? "halo-poor" : "halo-avg"
   );
-}
+}, 0);
 
       const popupHtml = `
         <b>${g.name}</b><br>
